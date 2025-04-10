@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChefHat,
@@ -9,6 +9,7 @@ import {
   BookOpen,
   X,
   Image as ImageIcon,
+  Mic,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -18,6 +19,73 @@ function RecipeGenerator() {
   const [recipe, setRecipe] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("ingredients");
+  const [isListening, setIsListening] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [speechRecognition, setSpeechRecognition] = useState(null);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          setIsProcessingVoice(true);
+          speak("I'm listening, please say your ingredients now");
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setIngredients(prev => prev ? `${prev}, ${transcript}` : transcript);
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error', event.error);
+          setIsListening(false);
+          setIsProcessingVoice(false);
+          speak("Sorry, I didn't catch that. Please try again.");
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          setIsProcessingVoice(false);
+        };
+
+        setSpeechRecognition(recognition);
+      }
+    }
+  }, []);
+
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const toggleListening = () => {
+    if (!speechRecognition) {
+      alert("Speech recognition is not supported in your browser");
+      return;
+    }
+    
+    if (isListening) {
+      speechRecognition.stop();
+      setIsListening(false);
+    } else {
+      try {
+        speechRecognition.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        alert("Please allow microphone access to use voice input");
+      }
+    }
+  };
 
   const generate = async () => {
     if (!ingredients.trim() && !imageFile) return;
@@ -56,36 +124,36 @@ function RecipeGenerator() {
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
 
-    const downloadPDF = async () => {
-        try {
-          const res = await fetch("http://localhost:8000/download-recipe-pdf", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-              recipe: recipe,
-              title: "Generated Recipe" // Add a default title
-            }),
-          });
-      
-          if (!res.ok) {
-            throw new Error("Failed to download PDF");
-          }
-      
-          const blob = await res.blob();
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.setAttribute("download", "recipe.pdf");
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-        } catch (error) {
-          console.error("PDF Download Error:", error);
-          alert("Failed to download PDF.");
-        }
-      };
+  const downloadPDF = async () => {
+    try {
+      const res = await fetch("http://localhost:8000/download-recipe-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          recipe: recipe,
+          title: "Generated Recipe"
+        }),
+      });
+  
+      if (!res.ok) {
+        throw new Error("Failed to download PDF");
+      }
+  
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "recipe.pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("PDF Download Error:", error);
+      alert("Failed to download PDF.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-6">
@@ -149,11 +217,25 @@ function RecipeGenerator() {
                 <div className="relative">
                   <Search className="absolute text-gray-400 top-3 left-3 h-5 w-5" />
                   <textarea
-                    className="w-full p-3 pl-10 border-2 border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-300 focus:border-amber-400 outline-none transition h-32 resize-none"
-                    placeholder="Enter ingredients separated by commas"
+                    className="w-full p-3 pl-10 pr-12 border-2 border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-300 focus:border-amber-400 outline-none transition h-32 resize-none"
+                    placeholder="Enter ingredients separated by commas, or speak them"
                     value={ingredients}
                     onChange={(e) => setIngredients(e.target.value)}
                   />
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={`absolute right-3 top-3 p-2 rounded-full ${
+                      isListening 
+                        ? 'bg-red-500 text-white animate-pulse' 
+                        : 'bg-amber-100 text-amber-600'
+                    }`}
+                    onClick={toggleListening}
+                    title={isListening ? "Stop listening" : "Speak ingredients"}
+                    disabled={isProcessingVoice}
+                  >
+                    <Mic className={`h-5 w-5 ${isProcessingVoice ? 'animate-pulse' : ''}`} />
+                  </motion.button>
                 </div>
                 {ingredientList.length > 0 && (
                   <div className="mt-4">
