@@ -3,6 +3,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import json
 from fastapi import HTTPException
+import re  
+
 
 
 load_dotenv()

@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChefHat, Search, ArrowRight, Clock, Users, BookOpen, X, Image as ImageIcon } from "lucide-react";
+import {
+  ChefHat,
+  Search,
+  ArrowRight,
+  Clock,
+  Users,
+  BookOpen,
+  X,
+  Image as ImageIcon,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 function RecipeGenerator() {
@@ -20,7 +29,7 @@ function RecipeGenerator() {
         res = await fetch("http://localhost:8000/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ingredients })
+          body: JSON.stringify({ ingredients }),
         });
       } else {
         const formData = new FormData();
@@ -28,7 +37,7 @@ function RecipeGenerator() {
 
         res = await fetch("http://localhost:8000/generate-from-image", {
           method: "POST",
-          body: formData
+          body: formData,
         });
       }
 
@@ -43,9 +52,40 @@ function RecipeGenerator() {
   };
 
   const ingredientList = ingredients
-    .split(',')
-    .map(item => item.trim())
-    .filter(item => item.length > 0);
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+    const downloadPDF = async () => {
+        try {
+          const res = await fetch("http://localhost:8000/download-recipe-pdf", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+              recipe: recipe,
+              title: "Generated Recipe" // Add a default title
+            }),
+          });
+      
+          if (!res.ok) {
+            throw new Error("Failed to download PDF");
+          }
+      
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", "recipe.pdf");
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        } catch (error) {
+          console.error("PDF Download Error:", error);
+          alert("Failed to download PDF.");
+        }
+      };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-6">
@@ -61,7 +101,7 @@ function RecipeGenerator() {
             <h1 className="text-2xl font-bold text-white">Culinary AI</h1>
           </div>
           <div className="flex gap-2">
-            {["ingredients", "image"].map(tab => (
+            {["ingredients", "image"].map((tab) => (
               <motion.button
                 key={tab}
                 whileHover={{ scale: 1.05 }}
@@ -103,7 +143,9 @@ function RecipeGenerator() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">What's in your kitchen?</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                  What's in your kitchen?
+                </h2>
                 <div className="relative">
                   <Search className="absolute text-gray-400 top-3 left-3 h-5 w-5" />
                   <textarea
@@ -115,14 +157,21 @@ function RecipeGenerator() {
                 </div>
                 {ingredientList.length > 0 && (
                   <div className="mt-4">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Your ingredients:</h3>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">
+                      Your ingredients:
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       {ingredientList.map((item, index) => (
-                        <span key={index} className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                        <span
+                          key={index}
+                          className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                        >
                           {item}
                           <button
                             onClick={() => {
-                              const newList = ingredientList.filter((_, i) => i !== index);
+                              const newList = ingredientList.filter(
+                                (_, i) => i !== index
+                              );
                               setIngredients(newList.join(", "));
                             }}
                           >
@@ -144,7 +193,9 @@ function RecipeGenerator() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload a food image</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                  Upload a food image
+                </h2>
                 <div className="border-2 border-dashed border-amber-300 rounded-xl p-4 flex flex-col items-center gap-4">
                   <ImageIcon className="h-12 w-12 text-amber-500" />
                   <input
@@ -152,7 +203,9 @@ function RecipeGenerator() {
                     accept="image/*"
                     onChange={(e) => setImageFile(e.target.files[0])}
                   />
-                  {imageFile && <p className="text-sm text-gray-600">{imageFile.name}</p>}
+                  {imageFile && (
+                    <p className="text-sm text-gray-600">{imageFile.name}</p>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -179,7 +232,9 @@ function RecipeGenerator() {
                       </div>
                       <div className="flex items-center gap-2 bg-amber-50 p-2 px-4 rounded-full">
                         <Users className="h-4 w-4 text-amber-600" />
-                        <span className="text-amber-800 text-sm">4 servings</span>
+                        <span className="text-amber-800 text-sm">
+                          4 servings
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 bg-amber-50 p-2 px-4 rounded-full">
                         <BookOpen className="h-4 w-4 text-amber-600" />
@@ -191,6 +246,14 @@ function RecipeGenerator() {
                     </div>
                   </div>
                 </div>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="mt-4 bg-amber-600 text-white px-4 py-2 rounded-xl shadow hover:bg-amber-700 transition"
+                  onClick={downloadPDF}
+                >
+                  Download Recipe as PDF
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -201,7 +264,11 @@ function RecipeGenerator() {
             whileTap={{ scale: 0.97 }}
             className="mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 w-full md:w-auto"
             onClick={generate}
-            disabled={loading || (activeTab === "ingredients" && !ingredients.trim()) || (activeTab === "image" && !imageFile)}
+            disabled={
+              loading ||
+              (activeTab === "ingredients" && !ingredients.trim()) ||
+              (activeTab === "image" && !imageFile)
+            }
           >
             {loading ? (
               <>
