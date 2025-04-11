@@ -1,4 +1,4 @@
-# .gitignore
+# Python
 .env
 venv/
 __pycache__/
@@ -7,4 +7,11 @@ __pycache__/
 *.pyd
 *.db
 
+# Node.js
 node_modules/
+
+# Environment files
+/config/.env
+
+# Generated content
+/generated/
