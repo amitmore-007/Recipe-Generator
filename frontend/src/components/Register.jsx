@@ -4,7 +4,7 @@ import axios from "axios";
 import { ChefHat, Mail, Lock, User, ArrowRight, CheckCircle, Sparkles, Globe, AlertCircle } from "lucide-react";
 // Import videos from assets
 import video1 from "../assets/video1.mp4";
-import video2 from "../assets/video2.mp4";
+import video2 from "../assets/video3.mp4";
 
 const Register = () => {
   const navigate = useNavigate();
