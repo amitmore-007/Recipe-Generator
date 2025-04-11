@@ -1,44 +1,55 @@
-import re
 from fpdf import FPDF
 from datetime import datetime
+import re
+
+def clean_markdown(text):
+    """Remove markdown formatting while preserving structure"""
+    # Remove headers
+    text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
+    # Remove bold/italic
+    text = text.replace('**', '').replace('__', '')
+    # Remove lists markers
+    text = re.sub(r'^\s*[\*\-\+] ', '• ', text, flags=re.MULTILINE)
+    return text.strip()
 
 def generate_recipe_pdf(recipe_data, output_path):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(200, 10, "AI-Generated Recipe", ln=True, align="C")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Set font based on language (example for RTL languages)
+    language = recipe_data.get("language", "en")
+    if language in ["ar", "he"]:  # Right-to-left languages
+        pdf.set_rtl(True)
+    
+    # Title
+    pdf.set_font("Arial", "B", 18)
+    pdf.cell(0, 10, "AI-Generated Recipe", ln=True, align="C")
     pdf.ln(10)
     
-    recipe = recipe_data.get("recipe", "")
-    title = recipe_data.get("title", "Recipe")
+    # Process recipe text
+    recipe_text = recipe_data.get("recipe", "")
+    cleaned_text = clean_markdown(recipe_text)
     
-    # Add title
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(200, 10, title, ln=True)
-    pdf.ln(5)
+    # Split into sections
+    sections = re.split(r'\n\s*\n', cleaned_text)
     
-    # Process sections
-    sections = recipe.split("## ")
     for section in sections:
         if not section.strip():
             continue
             
-        if "\n" in section:
-            section_title, *content = section.split("\n", 1)
-            content = "\n".join(content).strip()
-        else:
-            section_title = section
-            content = ""
-            
-        # Add section title
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(200, 10, section_title, ln=True)
-        
-        # Add content
-        if content:
+        # Detect section headers
+        if ":" in section and len(section.split(":")) > 1:
+            title, content = section.split(":", 1)
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, title.strip() + ":", ln=True)
             pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 10, content)
-            pdf.ln(5)
+            pdf.multi_cell(0, 8, content.strip())
+        else:
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, section.strip())
+        
+        pdf.ln(5)
     
     # Footer
     pdf.set_y(-15)
